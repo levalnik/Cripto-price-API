@@ -1,0 +1,31 @@
+{
+  "name": "crypto-price-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "REST API for tracking cryptocurrency prices from CoinMarketCap",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/server.js",
+    "test": "npm run build && jest --runInBand",
+    "test:watch": "npm run build && jest --watch"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "better-sqlite3": "^11.10.0",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.10.5",
+    "@types/supertest": "^6.0.2",
+    "jest": "^30.5.2",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.4.14",
+    "typescript": "^5.7.2"
+  }
+}

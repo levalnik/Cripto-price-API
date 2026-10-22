@@ -1,0 +1,317 @@
+openapi: 3.0.3
+info:
+  title: Crypto Price Tracker API
+  version: 1.0.0
+  description: REST API для управления отслеживаемыми криптовалютами и историей цен CoinMarketCap в USD.
+servers:
+  - url: http://localhost:3000
+security:
+  - BearerAuth: []
+tags:
+  - name: Health
+  - name: Cryptocurrencies
+  - name: Prices
+  - name: Synchronization
+paths:
+  /status:
+    get:
+      tags: [Health]
+      operationId: statusCheck
+      security: []
+      summary: Проверить доступность сервиса
+      responses:
+        '200':
+          description: Сервис и база данных доступны
+          content:
+            application/json:
+              schema: { type: object, required: [status], properties: { status: { type: string, enum: [ok] } } }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /health:
+    get:
+      tags: [Health]
+      operationId: healthCheck
+      security: []
+      summary: Проверить состояние сервиса и SQLite
+      responses:
+        '200':
+          description: Сервис и база данных доступны
+          content:
+            application/json:
+              schema: { type: object, required: [status], properties: { status: { type: string, enum: [ok] } } }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/cryptocurrencies:
+    get:
+      tags: [Cryptocurrencies]
+      operationId: listCryptocurrencies
+      summary: Список отслеживаемых криптовалют
+      responses:
+        '200':
+          description: Массив валют
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Cryptocurrency' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+    post:
+      tags: [Cryptocurrencies]
+      operationId: createCryptocurrency
+      summary: Добавить валюту для отслеживания
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CryptocurrencyInput' }
+      responses:
+        '201':
+          description: Валюта создана
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cryptocurrency' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/cryptocurrencies/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Cryptocurrencies]
+      operationId: getCryptocurrency
+      summary: Получить криптовалюту по ID
+      responses:
+        '200':
+          description: Запись криптовалюты
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cryptocurrency' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+    put:
+      tags: [Cryptocurrencies]
+      operationId: updateCryptocurrency
+      summary: Полностью обновить криптовалюту
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CryptocurrencyInput' }
+      responses:
+        '200':
+          description: Валюта обновлена
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cryptocurrency' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+    delete:
+      tags: [Cryptocurrencies]
+      operationId: deleteCryptocurrency
+      summary: Удалить валюту и связанную историю цен
+      responses:
+        '204': { description: Валюта и её история удалены }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/prices:
+    get:
+      tags: [Prices]
+      operationId: getLatestPrices
+      summary: Последняя сохранённая цена каждой валюты
+      responses:
+        '200':
+          description: Последние цены в USD
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PriceList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/cryptocurrencies/{id}/history:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Prices]
+      operationId: getPriceHistory
+      summary: История цен выбранной валюты
+      description: Поддерживаются только query-параметры limit, from и to; неизвестные параметры отклоняются.
+      parameters:
+        - name: limit
+          in: query
+          description: Максимальное количество записей
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+        - name: from
+          in: query
+          description: Нижняя граница диапазона, включительно (ISO 8601)
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          description: Верхняя граница диапазона, включительно (ISO 8601)
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Записи от новых к старым
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PriceList' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/sync:
+    post:
+      tags: [Synchronization]
+      operationId: synchronizePrices
+      summary: Немедленно запросить и сохранить цены из CoinMarketCap
+      responses:
+        '200':
+          description: Результат синхронизации; отсутствующие котировки перечислены в failedSymbols
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SyncResult' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '502': { $ref: '#/components/responses/UpstreamError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+      description: API_KEY разрешает все операции; READ_API_KEY ограничен безопасными read-запросами.
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      description: Положительный целочисленный ID
+      schema: { type: integer, minimum: 1 }
+  schemas:
+    CryptocurrencyInput:
+      type: object
+      additionalProperties: false
+      required: [symbol, name]
+      properties:
+        symbol: { type: string, minLength: 2, maxLength: 12, pattern: '^[A-Za-z0-9]+$' }
+        name: { type: string, minLength: 1, maxLength: 100, pattern: '.*\S.*' }
+    Cryptocurrency:
+      type: object
+      required: [id, symbol, name, created_at, last_updated_at]
+      properties:
+        id: { type: integer, minimum: 1 }
+        symbol: { type: string, example: BTC }
+        name: { type: string, example: Bitcoin }
+        created_at: { type: string, format: date-time }
+        last_updated_at: { type: string, format: date-time, nullable: true }
+    PriceRecord:
+      type: object
+      required: [id, crypto_id, symbol, name, price, currency, obtained_at]
+      properties:
+        id: { type: integer }
+        crypto_id: { type: integer }
+        symbol: { type: string }
+        name: { type: string }
+        price: { type: number, minimum: 0 }
+        currency: { type: string, enum: [USD] }
+        obtained_at: { type: string, format: date-time }
+    PriceList:
+      type: object
+      required: [currency, data]
+      properties:
+        currency: { type: string, enum: [USD] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PriceRecord' }
+    SyncResult:
+      type: object
+      required: [updated, failedSymbols, syncedAt]
+      properties:
+        updated: { type: integer, minimum: 0 }
+        failedSymbols: { type: array, items: { type: string } }
+        syncedAt: { type: string, format: date-time }
+    Error:
+      type: object
+      required: [error, message, statusCode, timestamp, requestId]
+      properties:
+        error: { type: string }
+        message: { type: string }
+        statusCode: { type: integer }
+        timestamp: { type: string, format: date-time }
+        requestId: { type: string, format: uuid }
+        context: { type: object, additionalProperties: true }
+  responses:
+    Unauthorized:
+      description: Требуется валидный Bearer API key
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: API key не имеет права выполнять эту операцию
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Ошибка валидации входных данных
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Запись не найдена
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Символ уже зарегистрирован
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    PayloadTooLarge:
+      description: Размер JSON body превышает 32 KB
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UnsupportedMediaType:
+      description: Кодировка body не поддерживается
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UpstreamError:
+      description: CoinMarketCap недоступен или вернул ошибку
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unavailable:
+      description: База данных недоступна
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

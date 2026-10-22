@@ -1,0 +1,19 @@
+services:
+  api:
+    build: .
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PORT: 3000
+      API_KEY: ${API_KEY:?Set API_KEY in .env}
+      READ_API_KEY: ${READ_API_KEY:-}
+      CMC_API_KEY: ${CMC_API_KEY:?Set CMC_API_KEY in .env}
+      CMC_BASE_URL: ${CMC_BASE_URL:-https://pro-api.coinmarketcap.com}
+      CMC_TIMEOUT_MS: ${CMC_TIMEOUT_MS:-5000}
+      SYNC_INTERVAL_MS: ${SYNC_INTERVAL_MS:-60000}
+      DATABASE_PATH: /app/data/prices.sqlite
+    volumes:
+      - crypto-data:/app/data
+    restart: unless-stopped
+volumes:
+  crypto-data:
