@@ -12,6 +12,7 @@ services:
       CMC_TIMEOUT_MS: ${CMC_TIMEOUT_MS:-5000}
       SYNC_INTERVAL_MS: ${SYNC_INTERVAL_MS:-60000}
       DATABASE_PATH: /app/data/prices.sqlite
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - crypto-data:/app/data
     restart: unless-stopped
